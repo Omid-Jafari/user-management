@@ -1,48 +1,38 @@
-import React from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchUsers, deleteUser } from "../api";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { fetchUsers } from "../api";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import PaginationComp from "./common/PaginationComp";
+import DeleteUserDialog from "./DeleteUserDialog";
+import UserEditDialog from "./UserEditDialog";
+import { User } from "@/types/user";
 
 const UserList: React.FC = () => {
-  const queryClient = useQueryClient();
+  const [openAddEdit, setOpenAddEdit] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [searchParams] = useSearchParams();
+  const page = searchParams?.get("page") || 1;
 
   // Fetch users with the updated query syntax
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["users"],
-    queryFn: () => fetchUsers(1),
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["users", page],
+    queryFn: () => fetchUsers(+page),
   });
-
-  // Delete mutation with updated syntax
-  const deleteMutation = useMutation({
-    mutationFn: deleteUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
-    },
-    onError: () => {
-      alert("Failed to delete user");
-    },
-  });
-
-  const handleDelete = (id: number) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
-      deleteMutation.mutate(id);
-    }
-  };
 
   if (isLoading) return <p>Loading...</p>;
   if (isError) return <p>Error loading users.</p>;
 
   return (
     <div className="space-y-4">
-      <Button onClick={() => refetch()}>Refresh</Button>
       <ul className="space-y-2">
-        {data?.data.data.map((user: { id: number; avatar: string | undefined; first_name: string; last_name: string; }) => (
+        {data?.data.data.map((user: User) => (
           <li
             key={user.id}
             className="flex items-center justify-between space-x-4 p-2 border rounded"
           >
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 mr-auto">
               <img
                 src={user.avatar}
                 alt={user.first_name}
@@ -52,16 +42,51 @@ const UserList: React.FC = () => {
                 {user.first_name} {user.last_name}
               </Link>
             </div>
+
             <Button
-              onClick={() => handleDelete(user.id)}
+              onClick={() => {
+                setSelectedUser(user);
+                setOpenAddEdit(true);
+              }}
+            >
+              Edit
+            </Button>
+            <Button
               variant="destructive"
-              size="sm"
+              onClick={() => {
+                setSelectedUser(user);
+                setOpenDelete(true);
+              }}
             >
               Delete
             </Button>
           </li>
         ))}
       </ul>
+      <PaginationComp pagesCount={data?.data?.total_pages} />
+      {selectedUser?.id ? (
+        <UserEditDialog
+          userId={selectedUser?.id}
+          defaultValues={
+            selectedUser
+              ? {
+                  name:
+                    selectedUser?.first_name + " " + selectedUser?.last_name,
+                  job: "",
+                }
+              : undefined
+          }
+          open={openAddEdit}
+          setOpen={setOpenAddEdit}
+        />
+      ) : null}
+      {selectedUser?.id ? (
+        <DeleteUserDialog
+          userId={selectedUser?.id}
+          open={openDelete}
+          setOpen={setOpenDelete}
+        />
+      ) : null}
     </div>
   );
 };

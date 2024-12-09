@@ -20,7 +20,12 @@ export const fetchUserDetail = (id: number) => apiClient.get(`/users/${id}`);
 export const createUser = (user: { name: string; job: string }) =>
   apiClient.post("/users", user);
 
-export const updateUser = (id: number, user: { name: string; job: string }) =>
-  apiClient.put(`/users/${id}`, user);
+export const updateUser = ({
+  id,
+  user,
+}: {
+  id: number;
+  user: { name: string; job: string };
+}) => apiClient.put(`/users/${id}`, user);
 
 export const deleteUser = (id: number) => apiClient.delete(`/users/${id}`);
